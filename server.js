@@ -1,6 +1,5 @@
 const express = require("express");
-const axios = require("axios");
-const cheerio = require("cheerio");
+const puppeteer = require("puppeteer");
 const cors = require("cors");
 
 const app = express();
@@ -12,67 +11,54 @@ const BASE =
 let allRecords = [];
 let currentPage = 1;
 let finished = false;
-let scrapingStarted = false;
+let started = false;
 
-// Pretend to be Chrome browser
-const browserHeaders = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
-  "Accept-Language": "en-US,en;q=0.9",
-  "Accept": "text/html,application/xhtml+xml",
-  "Connection": "keep-alive"
-};
+// scrape one page using real Chrome
+async function scrapePage(page, browser) {
+  const pageObj = await browser.newPage();
 
-// scrape one page safely
-async function scrapePage(page) {
-  try {
-    const url = BASE + page;
-    console.log("Scraping page", page);
+  const url = BASE + page;
+  console.log("Opening page:", page);
 
-    const response = await axios.get(url, { headers: browserHeaders });
-    const $ = cheerio.load(response.data);
+  await pageObj.goto(url, { waitUntil: "networkidle2", timeout: 0 });
 
-    let records = [];
+  const records = await pageObj.evaluate(() => {
+    const rows = document.querySelectorAll("table tbody tr");
+    let data = [];
 
-    $("table tbody tr").each((i, el) => {
-      const cols = $(el).find("td");
-
+    rows.forEach(row => {
+      const cols = row.querySelectorAll("td");
       if (cols.length > 0) {
-        records.push({
-          ehrms: $(cols[1]).text().trim(),
-          donor: $(cols[2]).text().trim(),
-          school: $(cols[3]).text().trim()
+        data.push({
+          ehrms: cols[1].innerText.trim(),
+          donor: cols[2].innerText.trim(),
+          school: cols[3].innerText.trim()
         });
       }
     });
 
-    return records;
+    return data;
+  });
 
-  } catch (err) {
-    console.log("Blocked or error on page", page);
-    return null; // important
-  }
+  await pageObj.close();
+  return records;
 }
 
-// background scraper with retry
+// background scraper
 async function startScraping() {
-  if (scrapingStarted) return;
-  scrapingStarted = true;
+  if (started) return;
+  started = true;
+
+  const browser = await puppeteer.launch({
+    headless: "new",
+    args: ["--no-sandbox", "--disable-setuid-sandbox"]
+  });
 
   while (!finished) {
-    const records = await scrapePage(currentPage);
+    const records = await scrapePage(currentPage, browser);
 
-    // if blocked → retry same page later
-    if (records === null) {
-      console.log("Retrying page in 10 seconds...");
-      await new Promise(r => setTimeout(r, 10000));
-      continue;
-    }
-
-    // if no records → end reached
     if (records.length === 0) {
       finished = true;
-      console.log("Scraping finished");
       break;
     }
 
@@ -80,21 +66,19 @@ async function startScraping() {
     console.log("Total records:", allRecords.length);
 
     currentPage++;
-
-    // slow scraping to avoid blocking
-    await new Promise(r => setTimeout(r, 3000));
+    await new Promise(r => setTimeout(r, 2000));
   }
+
+  await browser.close();
 }
 
-// start scraper AFTER server starts
-setTimeout(startScraping, 5000);
+// start scraper after server boot
+setTimeout(startScraping, 4000);
 
-// ROOT ROUTE
 app.get("/", (req, res) => {
-  res.send("TSCT API is running 🚀 Use /api/data");
+  res.send("TSCT Puppeteer API running 🚀");
 });
 
-// API ROUTE (always works)
 app.get("/api/data", (req, res) => {
   res.json({
     records: allRecords,
@@ -104,4 +88,4 @@ app.get("/api/data", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server running on port", PORT));
+app.listen(PORT, () => console.log("Server running on", PORT));
