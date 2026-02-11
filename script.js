@@ -33,7 +33,7 @@ function applySearch() {
 }
 
 async function fetchUpdates() {
-  const res = await fetch("https://tect-fetcher-backend.vercel.app/api/data");
+  const res = await fetch("https://tsct-fetcher-backend.vercel.app/api/data");
   const json = await res.json();
 
   const oldLength = uniqueData.length;
@@ -107,4 +107,5 @@ document.getElementById("prevTop").onclick = goPrev;
 document.getElementById("searchBox").addEventListener("input", applySearch);
 
 fetchUpdates();
+
 
