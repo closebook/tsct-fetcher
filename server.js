@@ -1,100 +1,80 @@
 const express = require("express");
-const puppeteer = require("puppeteer");
+const axios = require("axios");
+const cheerio = require("cheerio");
 const cors = require("cors");
 
 const app = express();
 app.use(cors());
+app.use(express.static("public"));
 
 const BASE =
-  "https://tsctup.com/running_sahyogsuchi_list.php?search=&district=572&block=704&page=";
+  "https://tsctup.com/sahyogsuchi_list.php?search=&district=572&block=704&page=";
 
 let allRecords = [];
 let currentPage = 1;
+let scraping = false;
 let finished = false;
-let started = false;
 
-// scrape one page using real Chrome
-async function scrapePage(page, browser) {
-  const pageObj = await browser.newPage();
-
+// scrape single page
+async function scrapePage(page) {
   const url = BASE + page;
-  console.log("Opening page:", page);
+  const { data } = await axios.get(url);
+  const $ = cheerio.load(data);
 
-  await pageObj.goto(url, { waitUntil: "networkidle2", timeout: 0 });
+  let records = [];
 
-  const records = await pageObj.evaluate(() => {
-    const rows = document.querySelectorAll("table tbody tr");
-    let data = [];
+  $("table tbody tr").each((i, el) => {
+    const cols = $(el).find("td");
 
-    rows.forEach(row => {
-      const cols = row.querySelectorAll("td");
-      if (cols.length > 0) {
-        data.push({
-          ehrms: cols[1].innerText.trim(),
-          donor: cols[2].innerText.trim(),
-          school: cols[3].innerText.trim()
-        });
-      }
-    });
-
-    return data;
+    if (cols.length > 0) {
+      records.push({
+        ehrms: $(cols[1]).text().trim(),
+        donor: $(cols[2]).text().trim(),
+        school: $(cols[3]).text().trim()
+      });
+    }
   });
 
-  await pageObj.close();
   return records;
 }
 
-// background scraper
+// BACKGROUND SCRAPER (runs forever)
 async function startScraping() {
-  if (started) return;
-  started = true;
-
-  const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--no-first-run",
-      "--no-zygote"
-    ]
-  });
-
+  if (scraping) return;
+  scraping = true;
 
   while (!finished) {
-    const records = await scrapePage(currentPage, browser);
+    console.log("Scraping page", currentPage);
+    const records = await scrapePage(currentPage);
 
     if (records.length === 0) {
       finished = true;
+      console.log("Scraping finished");
       break;
     }
 
     allRecords = allRecords.concat(records);
-    console.log("Total records:", allRecords.length);
-
     currentPage++;
-    await new Promise(r => setTimeout(r, 2000));
-  }
 
-  await browser.close();
+    // wait 1 second between pages (important!)
+    await new Promise(r => setTimeout(r, 1000));
+  }
 }
 
-// start scraper after server boot
-setTimeout(startScraping, 4000);
+// start scraper automatically
+startScraping();
 
-app.get("/", (req, res) => {
-  res.send("TSCT Puppeteer API running 🚀");
-});
 
+// API → returns current available data instantly
 app.get("/api/data", (req, res) => {
   res.json({
     records: allRecords,
-    finished: finished,
-    pagesScraped: currentPage - 1
+    finished: finished
   });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server running on", PORT));
+
+app.listen(PORT, () =>
+  console.log("Server running on port " + PORT)
+);
