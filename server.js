@@ -6,34 +6,32 @@ const cors = require("cors");
 const app = express();
 app.use(cors());
 
-// ================= CONFIG =================
 const BASE =
   "https://tsctup.com/running_sahyogsuchi_list.php?search=&district=572&block=704&page=";
 
 let allRecords = [];
 let currentPage = 1;
-let scraping = false;
 let finished = false;
+let scrapingStarted = false;
 
-// Pretend to be a real Chrome browser (Cloudflare bypass)
+// Pretend to be Chrome browser
 const browserHeaders = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
-  "Accept":
-    "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
   "Accept-Language": "en-US,en;q=0.9",
-  "Connection": "keep-alive",
+  "Accept": "text/html,application/xhtml+xml",
+  "Connection": "keep-alive"
 };
 
-// ================= SCRAPE ONE PAGE =================
+// scrape one page safely
 async function scrapePage(page) {
   try {
     const url = BASE + page;
-    console.log("Scraping:", url);
+    console.log("Scraping page", page);
 
-    const { data } = await axios.get(url, { headers: browserHeaders });
+    const response = await axios.get(url, { headers: browserHeaders });
+    const $ = cheerio.load(response.data);
 
-    const $ = cheerio.load(data);
     let records = [];
 
     $("table tbody tr").each((i, el) => {
@@ -43,29 +41,38 @@ async function scrapePage(page) {
         records.push({
           ehrms: $(cols[1]).text().trim(),
           donor: $(cols[2]).text().trim(),
-          school: $(cols[3]).text().trim(),
+          school: $(cols[3]).text().trim()
         });
       }
     });
 
     return records;
+
   } catch (err) {
-    console.log("Error scraping page:", page);
-    return [];
+    console.log("Blocked or error on page", page);
+    return null; // important
   }
 }
 
-// ================= BACKGROUND SCRAPER =================
+// background scraper with retry
 async function startScraping() {
-  if (scraping) return;
-  scraping = true;
+  if (scrapingStarted) return;
+  scrapingStarted = true;
 
   while (!finished) {
     const records = await scrapePage(currentPage);
 
+    // if blocked → retry same page later
+    if (records === null) {
+      console.log("Retrying page in 10 seconds...");
+      await new Promise(r => setTimeout(r, 10000));
+      continue;
+    }
+
+    // if no records → end reached
     if (records.length === 0) {
       finished = true;
-      console.log("Scraping finished.");
+      console.log("Scraping finished");
       break;
     }
 
@@ -74,25 +81,27 @@ async function startScraping() {
 
     currentPage++;
 
-    // IMPORTANT: slow scraping to avoid blocking
-    await new Promise(r => setTimeout(r, 2500));
+    // slow scraping to avoid blocking
+    await new Promise(r => setTimeout(r, 3000));
   }
 }
 
-// start scraper automatically when server starts
-startScraping();
+// start scraper AFTER server starts
+setTimeout(startScraping, 5000);
 
-// ================= API =================
+// ROOT ROUTE
+app.get("/", (req, res) => {
+  res.send("TSCT API is running 🚀 Use /api/data");
+});
+
+// API ROUTE (always works)
 app.get("/api/data", (req, res) => {
   res.json({
     records: allRecords,
     finished: finished,
+    pagesScraped: currentPage - 1
   });
 });
 
-// ================= SERVER =================
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () =>
-  console.log("Server running on port " + PORT)
-);
+app.listen(PORT, () => console.log("Server running on port", PORT));
