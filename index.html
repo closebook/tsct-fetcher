@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Pratapgarh Sahyog Suchi – Unique Donor Dashboard</title>
+
+  <!-- SEO META -->
+  <meta name="description" content="Live Sahyog Suchi dashboard for Pratapgarh (Kunda). View unique donor list, EHRMS and school details in a clean searchable dashboard.">
+  <meta name="keywords" content="TSCTUP, Sahyog Suchi, Pratapgarh teachers donation, donor list, Kunda block teachers, TSCT dashboard">
+  <meta name="author" content="Zensora Tech">
+  <meta name="robots" content="index, follow">
+
+  <!-- OPEN GRAPH (WhatsApp/Facebook Preview) -->
+  <meta property="og:title" content="Pratapgarh Sahyog Suchi Dashboard">
+  <meta property="og:description" content="Live unique donor list of Pratapgarh (Kunda) teachers from TSCTUP.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://zensoratech.in">
+  <meta property="og:image" content="/favicon.ico">
+
+  <!-- TWITTER PREVIEW -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Pratapgarh Sahyog Suchi Dashboard">
+  <meta name="twitter:description" content="Live unique donor list of Pratapgarh (Kunda) teachers.">
+
+  <!-- FAVICON -->
+  <link rel="icon" href="favicon.ico">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>💙 Pratapgarh (Kunda) Donation Dashboard</h1>
+  <p class="subtitle">Live Sahyog Suchi • Unique Donors Only</p>
+
+  <!-- Search -->
+  <div class="searchContainer">
+    <input 
+      type="text" 
+      id="searchBox" 
+      placeholder="🔍 Search by Name / EHRMS / School..."
+      class="searchBox"
+    />
+  </div>
+
+  <!-- TOP PAGINATION -->
+    <div class="paginationBar topBar">
+    <button id="firstTop" class="iconBtn">⏮</button>
+    <button id="prevTop" class="iconBtn">◀</button>
+    <span id="pageInfoTop"></span>
+    <button id="nextTop" class="iconBtn">▶</button>
+    <button id="lastTop" class="iconBtn">⏭</button>
+    </div>
+
+
+  <div class="tableCard">
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th>Donor Name</th>
+          <th>EHRMS</th>
+          <th>School</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- BOTTOM PAGINATION -->
+    <div class="paginationBar">
+        <button id="first" class="iconBtn">⏮</button>
+        <button id="prev" class="iconBtn">◀</button>
+        <span id="pageInfo"></span>
+        <button id="next" class="iconBtn">▶</button>
+        <button id="last" class="iconBtn">⏭</button>
+    </div>
+
+
+</div>
+
+<footer class="footer">
+  <p>
+    © 2026 Zensora Tech. All rights reserved.
+  </p>
+
+  <p class="disclaimer">
+    This is an independent dashboard created for easier viewing of publicly
+    available Sahyog Suchi data from TSCTUP. This website is not affiliated with
+    or officially associated with TSCTUP or any government organization.
+  </p>
+
+  <p class="credit">
+    Made with ❤️ by 
+    <a href="https://zensoratech.in" target="_blank">zensoratech.in</a>
+  </p>
+</footer>
+
+
+<script src="script.js"></script>
+</body>
+</html>
